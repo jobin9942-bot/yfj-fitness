@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🌑 DEEP BLACK BACKGROUND */
+body {
+  background-color: #050505;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* 🟢 PREMIUM NEON GRADIENT TEXT */
+.text-gradient {
+  background: linear-gradient(to right, #4ade80, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 🧊 HIGH-END GLASS EFFECT */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* 🕸️ CYBER GRID BACKGROUND */
+.bg-grid {
+  background-size: 50px 50px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+
+/* 📝 READABLE AI PLANS */
+.prose { color: #d4d4d8; max-width: none; }
+.prose strong { color: #4ade80; }
+.prose h1, .prose h2, .prose h3 { color: #4ade80 !important; margin-top: 1rem; }
+.prose ul { padding-left: 1.5rem; list-style: disc; }
+.prose li { margin-bottom: 0.5rem; color: #e5e7eb; }
+.prose table { width: 100%; border-collapse: collapse; background: transparent !important; margin: 1rem 0; }
+.prose th { color: #4ade80; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 10px; text-align: left; }
+.prose td { color: #d4d4d8; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px; }
