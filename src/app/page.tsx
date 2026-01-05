@@ -57,7 +57,7 @@ function FitnessApp() {
   const { user } = useUser();
   const [step, setStep] = useState<'onboarding' | 'dashboard'>('onboarding');
   const [isSyncing, setIsSyncing] = useState(false);
-  const { generatePlan, chatWithCoach, estimateCalories, loading } = useGemini(); // 👈 Added estimateCalories
+  const { generatePlan, chatWithCoach, estimateCalories, loading } = useGemini();
 
   // STATE
   const [profile, setProfile] = useState<UserProfile>({ name: '', age: '', weight: '', height: '', gender: '', activity: '', goal: '', dietPref: '', location: '', experience: '', workoutMode: '', cardioPref: '' });
@@ -130,14 +130,8 @@ function FitnessApp() {
   // 🍎 SMART DIET LOGGER
   const handleLogDiet = async () => {
       if(!newDiet.food) return;
-      
       let finalCalories = newDiet.calories;
-
-      // If user didn't type calories, ASK AI
-      if (!finalCalories) {
-          finalCalories = await estimateCalories(newDiet.food);
-      }
-
+      if (!finalCalories) finalCalories = await estimateCalories(newDiet.food);
       const entry = { id: Date.now(), food: newDiet.food, calories: finalCalories };
       setNewDiet({ food: '', calories: '' });
       await syncToCloud({ dietLogs: [entry, ...dietLogs] });
@@ -149,6 +143,8 @@ function FitnessApp() {
   }
 
   const handleClearChat = async () => { if(confirm("Clear chat?")) await syncToCloud({ chatHistory: [] }); }
+  const handleClearData = async () => { if(confirm("DELETE ALL DATA? This cannot be undone.")) { await saveToCloud(user?.id || '', null); window.location.reload(); } }
+
   const handleChat = async () => {
     if (!chatInput.trim()) return;
     const userMsg = { role: 'user', text: chatInput };
@@ -178,31 +174,22 @@ function FitnessApp() {
                 <input type="number" placeholder="Kg" className={selectClass(profile.weight)} onChange={(e) => setProfile({...profile, weight: e.target.value})} />
                 <input type="number" placeholder="Cm" className={selectClass(profile.height)} onChange={(e) => setProfile({...profile, height: e.target.value})} />
              </div>
-             
-             {/* 🔹 Gender & Activity */}
              <div className="flex gap-4">
                 <select className={selectClass(profile.gender)} value={profile.gender} onChange={(e) => setProfile({...profile, gender: e.target.value})}><option value="" className={optionClass}>Gender</option><option value="male" className={optionClass}>Male</option><option value="female" className={optionClass}>Female</option></select>
                 <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="" className={optionClass}>Activity</option><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
              </div>
-
-             {/* 🔹 Workout Mode & Cardio */}
              <div className="flex gap-4">
                 <select className={selectClass(profile.workoutMode)} value={profile.workoutMode} onChange={(e) => setProfile({...profile, workoutMode: e.target.value})}><option value="" className={optionClass}>Place</option><option value="gym" className={optionClass}>Gym</option><option value="home" className={optionClass}>Home</option></select>
                 <select className={selectClass(profile.cardioPref)} value={profile.cardioPref} onChange={(e) => setProfile({...profile, cardioPref: e.target.value})}><option value="" className={optionClass}>Cardio</option><option value="treadmill" className={optionClass}>Treadmill</option><option value="ground" className={optionClass}>Ground</option></select>
              </div>
-
-             {/* 🔹 Experience & Goal */}
              <div className="flex gap-4">
                 <select className={selectClass(profile.experience)} value={profile.experience} onChange={(e) => setProfile({...profile, experience: e.target.value})}><option value="" className={optionClass}>Level</option><option value="beginner" className={optionClass}>Beginner</option><option value="intermediate" className={optionClass}>Intermediate</option><option value="advanced" className={optionClass}>Pro</option></select>
                 <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="" className={optionClass}>Goal</option><option value="weight_loss" className={optionClass}>Weight Loss</option><option value="muscle_gain" className={optionClass}>Muscle Gain</option><option value="posture_correction" className={optionClass}>Posture Fix</option></select>
              </div>
-
-             {/* 🔹 Diet & Country */}
              <div className="flex gap-4">
                 <select className={selectClass(profile.dietPref)} value={profile.dietPref} onChange={(e) => setProfile({...profile, dietPref: e.target.value})}><option value="" className={optionClass}>Diet</option><option value="non-veg" className={optionClass}>Non-Veg</option><option value="veg" className={optionClass}>Veg</option><option value="vegan" className={optionClass}>Vegan</option></select>
                 <select className={selectClass(profile.location)} value={profile.location} onChange={(e) => setProfile({...profile, location: e.target.value})}><option value="" className={optionClass}>Country</option>{COUNTRIES.map(c => <option key={c} value={c} className={optionClass}>{c}</option>)}<option value="Other" className={optionClass}>Other</option></select>
              </div>
-
              <button onClick={handleFinishOnboarding} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl mt-2 transition-all shadow-lg shadow-green-900/20">Generate Plan 🚀</button>
           </div>
         </motion.div>
@@ -235,7 +222,7 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* 🥗 DIET TAB WITH AUTO-TRACKING */}
+        {/* 🥗 DIET TAB WITH MOBILE FIX */}
         {activeTab === 'diet' && (
            <div className="space-y-8">
               <div className="glass-card p-6 rounded-3xl border border-orange-500/20">
@@ -243,16 +230,19 @@ function FitnessApp() {
                     <h2 className="text-xl font-bold flex items-center gap-2 text-orange-400"><Utensils size={20}/> Daily Calorie Tracker</h2>
                     <div className="text-2xl font-black text-white">{totalCalories} <span className="text-sm text-zinc-500 font-normal">kcal today</span></div>
                  </div>
-                 <div className="flex gap-2 mb-4">
-                    <input placeholder="Food (e.g. '2 Eggs' or 'Biryani')" value={newDiet.food} onChange={e => setNewDiet({...newDiet, food: e.target.value})} className="flex-[2] bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
+                 
+                 {/* 👇 FIXED: Stacks vertically on Mobile */}
+                 <div className="flex flex-col md:flex-row gap-3 mb-4">
+                    <input placeholder="Food (e.g. '2 Eggs')" value={newDiet.food} onChange={e => setNewDiet({...newDiet, food: e.target.value})} className="w-full md:flex-[2] bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
                     
-                    {/* 🔹 CALORIE BOX IS NOW OPTIONAL */}
-                    <input type="number" placeholder={loading ? "AI Calc..." : "Cals (Opt)"} value={newDiet.calories} onChange={e => setNewDiet({...newDiet, calories: e.target.value})} className="flex-1 bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none" disabled={loading}/>
-                    
-                    <button onClick={handleLogDiet} disabled={loading} className="bg-orange-600 px-4 rounded-xl text-white hover:bg-orange-500 transition-all flex items-center justify-center min-w-[50px]">
-                        {loading ? <span className="animate-spin">⏳</span> : <Plus/>}
-                    </button>
+                    <div className="flex gap-2 w-full md:flex-1">
+                        <input type="number" placeholder={loading ? "Calc..." : "Cals"} value={newDiet.calories} onChange={e => setNewDiet({...newDiet, calories: e.target.value})} className="flex-1 bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none" disabled={loading}/>
+                        <button onClick={handleLogDiet} disabled={loading} className="bg-orange-600 px-6 rounded-xl text-white hover:bg-orange-500 transition-all flex items-center justify-center">
+                            {loading ? <span className="animate-spin">⏳</span> : <Plus/>}
+                        </button>
+                    </div>
                  </div>
+
                  <div className="space-y-2 max-h-40 overflow-y-auto">
                     {dietLogs.map(log => (
                         <div key={log.id} className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-lg border border-white/5">
@@ -263,7 +253,7 @@ function FitnessApp() {
                             </div>
                         </div>
                     ))}
-                    {dietLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today. Try typing "Apple" and clicking Add!</div>}
+                    {dietLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today.</div>}
                  </div>
               </div>
 
@@ -288,8 +278,50 @@ function FitnessApp() {
            </div>
         )}
 
+        {/* ⚙️ ACCOUNT TAB - FIXED (RESTORED EDIT FORM) */}
+        {activeTab === 'account' && (
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div className="grid md:grid-cols-3 gap-6">
+                    <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800">
+                        <h3 className="text-zinc-500 text-sm mb-1">Your BMI</h3>
+                        <div className="text-4xl font-bold text-white">{calculateBMI()}</div>
+                        <div className="text-xs text-green-400 mt-1">{Number(calculateBMI()) < 18.5 ? "Underweight" : Number(calculateBMI()) < 25 ? "Healthy" : "Overweight"}</div>
+                    </div>
+                    <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800">
+                        <h3 className="text-zinc-500 text-sm mb-1">Consistency</h3>
+                        <div className="text-4xl font-bold text-orange-400">{progress.length} Logs</div>
+                    </div>
+                    <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800 flex flex-col justify-center items-center">
+                        <div className="text-sm text-zinc-500 mb-2">Google Account</div>
+                        <UserButton showName />
+                    </div>
+                </div>
+
+                <div className="glass-card p-8 rounded-3xl">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Settings size={20}/> Edit Profile</h2>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="text-xs text-zinc-500 mb-1">Name</label><input value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                            <div><label className="text-xs text-zinc-500 mb-1">Age</label><input type="number" value={profile.age} onChange={(e) => setProfile({...profile, age: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="text-xs text-zinc-500 mb-1">Weight (kg)</label><input type="number" value={profile.weight} onChange={(e) => setProfile({...profile, weight: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                            <div><label className="text-xs text-zinc-500 mb-1">Height (cm)</label><input type="number" value={profile.height} onChange={(e) => setProfile({...profile, height: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4 pt-4">
+                             <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
+                             <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="weight_loss" className={optionClass}>Weight Loss</option><option value="muscle_gain" className={optionClass}>Muscle Gain</option></select>
+                        </div>
+                        <button onClick={handleUpdateProfile} className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-green-400 transition-all mt-4">Save & Sync Updates ☁️</button>
+                    </div>
+                </div>
+                 <div className="text-center mt-10">
+                    <button onClick={handleClearData} className="text-red-500 text-sm hover:underline flex items-center justify-center gap-2 mx-auto"><Trash2 size={14}/> Delete Account Data</button>
+                </div>
+            </div>
+        )}
+
         {activeTab === 'chat' && (<div className="h-[70vh] flex flex-col"><div className="flex-1 overflow-y-auto p-4 space-y-4">{chatHistory.map((m,i)=><div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'}`}><div className={`p-3 rounded-xl max-w-[80%] ${m.role==='user'?'bg-green-600':'bg-zinc-800'}`}>{m.text}</div></div>)}</div><div className="flex gap-2 p-2"><input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleChat()} className="flex-1 bg-zinc-900 p-4 rounded-xl border border-zinc-800 outline-none"/><button onClick={handleChat} className="bg-green-600 p-4 rounded-xl"><Send/></button></div></div>)}
-        {activeTab === 'account' && (<div className="p-8 text-center"><UserButton showName /><button onClick={handleUpdateProfile} className="mt-8 bg-zinc-800 px-6 py-3 rounded-xl">Save Profile</button></div>)}
       </main>
       
       <nav className="md:hidden fixed bottom-0 w-full bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 flex justify-around z-50 pb-safe">{['workout','diet','progress','account'].map(t=><button key={t} onClick={()=>setActiveTab(t as any)} className={activeTab===t?'text-green-500':'text-zinc-600'}>{t==='workout'?<Dumbbell/>:t==='diet'?<Apple/>:<UserIcon/>}</button>)}</nav>
