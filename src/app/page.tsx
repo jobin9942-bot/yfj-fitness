@@ -16,7 +16,8 @@ interface UserProfile {
 }
 
 interface ProgressEntry { date: string; weight: string; note: string; }
-interface DietLog { id: number; food: string; calories: string; }
+// 👇 NEW: Added 'date' to DietLog so we know when you ate it
+interface DietLog { id: number; food: string; calories: string; date: string; }
 
 export default function FitBuddyWebsite() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
@@ -127,12 +128,15 @@ function FitnessApp() {
     await syncToCloud({ progress: [entry, ...progress] });
   };
   
-  // 🍎 SMART DIET LOGGER
+  // 🍎 SMART DIET LOGGER (NOW WITH AUTO DATE)
   const handleLogDiet = async () => {
       if(!newDiet.food) return;
       let finalCalories = newDiet.calories;
       if (!finalCalories) finalCalories = await estimateCalories(newDiet.food);
-      const entry = { id: Date.now(), food: newDiet.food, calories: finalCalories };
+      
+      // 👇 We save TODAY'S DATE with the food
+      const entry = { id: Date.now(), food: newDiet.food, calories: finalCalories, date: new Date().toLocaleDateString() };
+      
       setNewDiet({ food: '', calories: '' });
       await syncToCloud({ dietLogs: [entry, ...dietLogs] });
   };
@@ -156,10 +160,14 @@ function FitnessApp() {
   const calculateBMI = () => { const h = Number(profile.height)/100; const w=Number(profile.weight); return (h&&w) ? (w/(h*h)).toFixed(1) : 0; };
   const getGraphData = () => [...progress].reverse().map(p => ({ date: p.date.split('/')[0]+'/'+p.date.split('/')[1], weight: Number(p.weight) }));
   
-  const totalCalories = dietLogs.reduce((acc, curr) => acc + Number(curr.calories), 0);
-
   const selectClass = (val: string) => `w-full bg-zinc-900/50 p-4 rounded-xl border border-white/10 outline-none text-white appearance-none cursor-pointer`;
   const optionClass = "bg-zinc-900 text-white";
+
+  // 📅 FILTER LOGS BY TODAY
+  // This logic ensures that food from yesterday does not appear today!
+  const today = new Date().toLocaleDateString();
+  const todayLogs = dietLogs.filter(log => log.date === today);
+  const totalCalories = todayLogs.reduce((acc, curr) => acc + Number(curr.calories), 0);
 
   // --- ONBOARDING UI ---
   if (step === 'onboarding') {
@@ -174,6 +182,7 @@ function FitnessApp() {
                 <input type="number" placeholder="Kg" className={selectClass(profile.weight)} onChange={(e) => setProfile({...profile, weight: e.target.value})} />
                 <input type="number" placeholder="Cm" className={selectClass(profile.height)} onChange={(e) => setProfile({...profile, height: e.target.value})} />
              </div>
+             {/* Dropdowns... */}
              <div className="flex gap-4">
                 <select className={selectClass(profile.gender)} value={profile.gender} onChange={(e) => setProfile({...profile, gender: e.target.value})}><option value="" className={optionClass}>Gender</option><option value="male" className={optionClass}>Male</option><option value="female" className={optionClass}>Female</option></select>
                 <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="" className={optionClass}>Activity</option><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
@@ -222,7 +231,7 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* 🥗 DIET TAB WITH MOBILE FIX */}
+        {/* 🥗 DIET TAB WITH AUTO RESET + MOBILE FIX */}
         {activeTab === 'diet' && (
            <div className="space-y-8">
               <div className="glass-card p-6 rounded-3xl border border-orange-500/20">
@@ -231,7 +240,6 @@ function FitnessApp() {
                     <div className="text-2xl font-black text-white">{totalCalories} <span className="text-sm text-zinc-500 font-normal">kcal today</span></div>
                  </div>
                  
-                 {/* 👇 FIXED: Stacks vertically on Mobile */}
                  <div className="flex flex-col md:flex-row gap-3 mb-4">
                     <input placeholder="Food (e.g. '2 Eggs')" value={newDiet.food} onChange={e => setNewDiet({...newDiet, food: e.target.value})} className="w-full md:flex-[2] bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
                     
@@ -243,8 +251,9 @@ function FitnessApp() {
                     </div>
                  </div>
 
+                 {/* 👇 WE ONLY MAP 'todayLogs' NOW */}
                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {dietLogs.map(log => (
+                    {todayLogs.map(log => (
                         <div key={log.id} className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-lg border border-white/5">
                             <span className="text-zinc-300 capitalize">{log.food}</span>
                             <div className="flex items-center gap-4">
@@ -253,7 +262,7 @@ function FitnessApp() {
                             </div>
                         </div>
                     ))}
-                    {dietLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today.</div>}
+                    {todayLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today. Start fresh! 🌱</div>}
                  </div>
               </div>
 
@@ -278,7 +287,7 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* ⚙️ ACCOUNT TAB - FIXED (RESTORED EDIT FORM) */}
+        {/* ⚙️ ACCOUNT TAB */}
         {activeTab === 'account' && (
             <div className="max-w-4xl mx-auto space-y-6">
                 <div className="grid md:grid-cols-3 gap-6">
@@ -300,18 +309,34 @@ function FitnessApp() {
                 <div className="glass-card p-8 rounded-3xl">
                     <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Settings size={20}/> Edit Profile</h2>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-xs text-zinc-500 mb-1">Name</label><input value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
-                            <div><label className="text-xs text-zinc-500 mb-1">Age</label><input type="number" value={profile.age} onChange={(e) => setProfile({...profile, age: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                        <div><label className="text-xs text-zinc-500 mb-1">Name</label><input value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                        
+                        <div className="flex gap-4">
+                            <div className="flex-1"><label className="text-xs text-zinc-500 mb-1">Age</label><input type="number" value={profile.age} onChange={(e) => setProfile({...profile, age: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                            <div className="flex-1"><label className="text-xs text-zinc-500 mb-1">Weight</label><input type="number" value={profile.weight} onChange={(e) => setProfile({...profile, weight: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+                            <div className="flex-1"><label className="text-xs text-zinc-500 mb-1">Height</label><input type="number" value={profile.height} onChange={(e) => setProfile({...profile, height: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-xs text-zinc-500 mb-1">Weight (kg)</label><input type="number" value={profile.weight} onChange={(e) => setProfile({...profile, weight: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
-                            <div><label className="text-xs text-zinc-500 mb-1">Height (cm)</label><input type="number" value={profile.height} onChange={(e) => setProfile({...profile, height: e.target.value})} className="w-full bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-white" /></div>
+
+                        <div className="flex gap-4">
+                             <select className={selectClass(profile.gender)} value={profile.gender} onChange={(e) => setProfile({...profile, gender: e.target.value})}><option value="" className={optionClass}>Gender</option><option value="male" className={optionClass}>Male</option><option value="female" className={optionClass}>Female</option></select>
+                             <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="" className={optionClass}>Activity</option><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
                         </div>
-                        <div className="grid md:grid-cols-2 gap-4 pt-4">
-                             <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
-                             <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="weight_loss" className={optionClass}>Weight Loss</option><option value="muscle_gain" className={optionClass}>Muscle Gain</option></select>
+                        
+                        <div className="flex gap-4">
+                            <select className={selectClass(profile.workoutMode)} value={profile.workoutMode} onChange={(e) => setProfile({...profile, workoutMode: e.target.value})}><option value="" className={optionClass}>Place</option><option value="gym" className={optionClass}>Gym</option><option value="home" className={optionClass}>Home</option></select>
+                            <select className={selectClass(profile.cardioPref)} value={profile.cardioPref} onChange={(e) => setProfile({...profile, cardioPref: e.target.value})}><option value="" className={optionClass}>Cardio</option><option value="treadmill" className={optionClass}>Treadmill</option><option value="ground" className={optionClass}>Ground</option></select>
                         </div>
+
+                        <div className="flex gap-4">
+                            <select className={selectClass(profile.experience)} value={profile.experience} onChange={(e) => setProfile({...profile, experience: e.target.value})}><option value="" className={optionClass}>Level</option><option value="beginner" className={optionClass}>Beginner</option><option value="intermediate" className={optionClass}>Intermediate</option><option value="advanced" className={optionClass}>Pro</option></select>
+                            <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="" className={optionClass}>Goal</option><option value="weight_loss" className={optionClass}>Weight Loss</option><option value="muscle_gain" className={optionClass}>Muscle Gain</option><option value="posture_correction" className={optionClass}>Posture Fix</option></select>
+                        </div>
+
+                        <div className="flex gap-4">
+                             <select className={selectClass(profile.dietPref)} value={profile.dietPref} onChange={(e) => setProfile({...profile, dietPref: e.target.value})}><option value="" className={optionClass}>Diet</option><option value="non-veg" className={optionClass}>Non-Veg</option><option value="veg" className={optionClass}>Veg</option><option value="vegan" className={optionClass}>Vegan</option></select>
+                             <select className={selectClass(profile.location)} value={profile.location} onChange={(e) => setProfile({...profile, location: e.target.value})}><option value="" className={optionClass}>Country</option>{COUNTRIES.map(c => <option key={c} value={c} className={optionClass}>{c}</option>)}<option value="Other" className={optionClass}>Other</option></select>
+                        </div>
+
                         <button onClick={handleUpdateProfile} className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-green-400 transition-all mt-4">Save & Sync Updates ☁️</button>
                     </div>
                 </div>
