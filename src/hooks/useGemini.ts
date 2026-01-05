@@ -124,5 +124,33 @@ export const useGemini = () => {
     } catch (e) { setLoading(false); return "Connection error."; }
   }
 
-  return { generatePlan, chatWithCoach, loading };
+  // 🍎 NEW: ESTIMATE CALORIES
+  const estimateCalories = async (food: string) => {
+    setLoading(true);
+    try {
+        const modelName = await getAvailableModel();
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`,
+            {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ 
+                    text: `Identify the average calories in 1 standard serving of "${food}". Output ONLY the number (integer). Example: for 'Apple', return '95'. If unsure, estimate.` 
+                }] }] 
+            }),
+            }
+        );
+        const data = await response.json();
+        const text = data.candidates[0].content.parts[0].text;
+        const calories = text.replace(/[^0-9]/g, ''); // Extract only numbers
+        setLoading(false);
+        return calories || "0";
+    } catch (error) {
+        setLoading(false);
+        return "0";
+    }
+  }
+
+  return { generatePlan, chatWithCoach, estimateCalories, loading };
 };

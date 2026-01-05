@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useGemini } from '@/hooks/useGemini';
 import { saveToCloud, loadFromCloud } from './actions';
-import { Apple, Dumbbell, User as UserIcon, Send, Bot, Sparkles, Zap, Trash2, TrendingUp, Calendar, Plus, LogIn, Settings, Activity, MessageSquare, Cloud, Utensils } from 'lucide-react';
+import { Apple, Dumbbell, User as UserIcon, Send, Bot, Sparkles, Zap, Trash2, TrendingUp, Calendar, Plus, LogIn, Settings, Activity, MessageSquare, Cloud, Utensils, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SignInButton, UserButton, useUser, SignedIn, SignedOut } from "@clerk/nextjs";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -57,7 +57,7 @@ function FitnessApp() {
   const { user } = useUser();
   const [step, setStep] = useState<'onboarding' | 'dashboard'>('onboarding');
   const [isSyncing, setIsSyncing] = useState(false);
-  const { generatePlan, chatWithCoach, loading } = useGemini();
+  const { generatePlan, chatWithCoach, estimateCalories, loading } = useGemini(); // 👈 Added estimateCalories
 
   // STATE
   const [profile, setProfile] = useState<UserProfile>({ name: '', age: '', weight: '', height: '', gender: '', activity: '', goal: '', dietPref: '', location: '', experience: '', workoutMode: '', cardioPref: '' });
@@ -127,12 +127,22 @@ function FitnessApp() {
     await syncToCloud({ progress: [entry, ...progress] });
   };
   
+  // 🍎 SMART DIET LOGGER
   const handleLogDiet = async () => {
-      if(!newDiet.food || !newDiet.calories) return;
-      const entry = { id: Date.now(), food: newDiet.food, calories: newDiet.calories };
+      if(!newDiet.food) return;
+      
+      let finalCalories = newDiet.calories;
+
+      // If user didn't type calories, ASK AI
+      if (!finalCalories) {
+          finalCalories = await estimateCalories(newDiet.food);
+      }
+
+      const entry = { id: Date.now(), food: newDiet.food, calories: finalCalories };
       setNewDiet({ food: '', calories: '' });
       await syncToCloud({ dietLogs: [entry, ...dietLogs] });
   };
+
   const handleRemoveDiet = async (id: number) => {
       const updated = dietLogs.filter(d => d.id !== id);
       await syncToCloud({ dietLogs: updated });
@@ -155,7 +165,7 @@ function FitnessApp() {
   const selectClass = (val: string) => `w-full bg-zinc-900/50 p-4 rounded-xl border border-white/10 outline-none text-white appearance-none cursor-pointer`;
   const optionClass = "bg-zinc-900 text-white";
 
-  // --- ONBOARDING UI (FULL VERSION) ---
+  // --- ONBOARDING UI ---
   if (step === 'onboarding') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#050505] p-6 relative">
@@ -225,6 +235,7 @@ function FitnessApp() {
            </div>
         )}
 
+        {/* 🥗 DIET TAB WITH AUTO-TRACKING */}
         {activeTab === 'diet' && (
            <div className="space-y-8">
               <div className="glass-card p-6 rounded-3xl border border-orange-500/20">
@@ -233,21 +244,26 @@ function FitnessApp() {
                     <div className="text-2xl font-black text-white">{totalCalories} <span className="text-sm text-zinc-500 font-normal">kcal today</span></div>
                  </div>
                  <div className="flex gap-2 mb-4">
-                    <input placeholder="Food (e.g., Apple)" value={newDiet.food} onChange={e => setNewDiet({...newDiet, food: e.target.value})} className="flex-[2] bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
-                    <input type="number" placeholder="Cals" value={newDiet.calories} onChange={e => setNewDiet({...newDiet, calories: e.target.value})} className="flex-1 bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
-                    <button onClick={handleLogDiet} className="bg-orange-600 px-4 rounded-xl text-white"><Plus/></button>
+                    <input placeholder="Food (e.g. '2 Eggs' or 'Biryani')" value={newDiet.food} onChange={e => setNewDiet({...newDiet, food: e.target.value})} className="flex-[2] bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none"/>
+                    
+                    {/* 🔹 CALORIE BOX IS NOW OPTIONAL */}
+                    <input type="number" placeholder={loading ? "AI Calc..." : "Cals (Opt)"} value={newDiet.calories} onChange={e => setNewDiet({...newDiet, calories: e.target.value})} className="flex-1 bg-zinc-900 p-3 rounded-xl border border-white/10 text-white outline-none" disabled={loading}/>
+                    
+                    <button onClick={handleLogDiet} disabled={loading} className="bg-orange-600 px-4 rounded-xl text-white hover:bg-orange-500 transition-all flex items-center justify-center min-w-[50px]">
+                        {loading ? <span className="animate-spin">⏳</span> : <Plus/>}
+                    </button>
                  </div>
                  <div className="space-y-2 max-h-40 overflow-y-auto">
                     {dietLogs.map(log => (
                         <div key={log.id} className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-lg border border-white/5">
-                            <span className="text-zinc-300">{log.food}</span>
+                            <span className="text-zinc-300 capitalize">{log.food}</span>
                             <div className="flex items-center gap-4">
                                 <span className="font-bold text-white">{log.calories} cal</span>
                                 <button onClick={() => handleRemoveDiet(log.id)} className="text-zinc-600 hover:text-red-500"><Trash2 size={14}/></button>
                             </div>
                         </div>
                     ))}
-                    {dietLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today.</div>}
+                    {dietLogs.length === 0 && <div className="text-center text-zinc-600 text-sm py-2">No food logged today. Try typing "Apple" and clicking Add!</div>}
                  </div>
               </div>
 
