@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useGemini } from '@/hooks/useGemini';
 import { saveToCloud, loadFromCloud } from './actions';
-// 👇 FIXED: Renamed User to UserIcon to avoid conflict
 import { Apple, Dumbbell, User as UserIcon, Send, Bot, Sparkles, Zap, Trash2, TrendingUp, Calendar, Plus, LogIn, Settings, Activity, MessageSquare, Cloud, Utensils } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SignInButton, UserButton, useUser, SignedIn, SignedOut } from "@clerk/nextjs";
@@ -102,7 +101,6 @@ function FitnessApp() {
           dietLogs: newData.dietLogs || dietLogs
       };
       
-      // Update State
       if(newData.profile) setProfile(newData.profile);
       if(newData.plans) setPlans(newData.plans);
       if(newData.progress) setProgress(newData.progress);
@@ -154,13 +152,14 @@ function FitnessApp() {
   
   const totalCalories = dietLogs.reduce((acc, curr) => acc + Number(curr.calories), 0);
 
-  const selectClass = (val: string) => `w-full bg-zinc-900/50 p-4 rounded-xl border border-white/10 outline-none text-white`;
+  const selectClass = (val: string) => `w-full bg-zinc-900/50 p-4 rounded-xl border border-white/10 outline-none text-white appearance-none cursor-pointer`;
+  const optionClass = "bg-zinc-900 text-white";
 
-  // --- ONBOARDING UI ---
+  // --- ONBOARDING UI (FULL VERSION) ---
   if (step === 'onboarding') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#050505] p-6 relative">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card w-full max-w-md p-8 rounded-3xl relative z-10">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card w-full max-w-md p-8 rounded-3xl relative z-10 max-h-[90vh] overflow-y-auto">
           <h2 className="text-2xl font-bold mb-6">Setup Profile</h2>
           <div className="space-y-4">
              <input placeholder="Name" value={profile.name} className={selectClass(profile.name)} onChange={(e) => setProfile({...profile, name: e.target.value})} />
@@ -169,9 +168,32 @@ function FitnessApp() {
                 <input type="number" placeholder="Kg" className={selectClass(profile.weight)} onChange={(e) => setProfile({...profile, weight: e.target.value})} />
                 <input type="number" placeholder="Cm" className={selectClass(profile.height)} onChange={(e) => setProfile({...profile, height: e.target.value})} />
              </div>
-             <select className={selectClass(profile.gender)} value={profile.gender} onChange={(e) => setProfile({...profile, gender: e.target.value})}><option value="">Gender</option><option value="male">Male</option><option value="female">Female</option></select>
-             <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="">Goal</option><option value="weight_loss">Weight Loss</option><option value="muscle_gain">Muscle Gain</option></select>
-             <button onClick={handleFinishOnboarding} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl mt-2 transition-all">Start Journey 🚀</button>
+             
+             {/* 🔹 Gender & Activity */}
+             <div className="flex gap-4">
+                <select className={selectClass(profile.gender)} value={profile.gender} onChange={(e) => setProfile({...profile, gender: e.target.value})}><option value="" className={optionClass}>Gender</option><option value="male" className={optionClass}>Male</option><option value="female" className={optionClass}>Female</option></select>
+                <select className={selectClass(profile.activity)} value={profile.activity} onChange={(e) => setProfile({...profile, activity: e.target.value})}><option value="" className={optionClass}>Activity</option><option value="sedentary" className={optionClass}>Desk Job</option><option value="lightly_active" className={optionClass}>Light Active</option><option value="moderately_active" className={optionClass}>Active Gym</option><option value="very_active" className={optionClass}>Athlete</option></select>
+             </div>
+
+             {/* 🔹 Workout Mode & Cardio */}
+             <div className="flex gap-4">
+                <select className={selectClass(profile.workoutMode)} value={profile.workoutMode} onChange={(e) => setProfile({...profile, workoutMode: e.target.value})}><option value="" className={optionClass}>Place</option><option value="gym" className={optionClass}>Gym</option><option value="home" className={optionClass}>Home</option></select>
+                <select className={selectClass(profile.cardioPref)} value={profile.cardioPref} onChange={(e) => setProfile({...profile, cardioPref: e.target.value})}><option value="" className={optionClass}>Cardio</option><option value="treadmill" className={optionClass}>Treadmill</option><option value="ground" className={optionClass}>Ground</option></select>
+             </div>
+
+             {/* 🔹 Experience & Goal */}
+             <div className="flex gap-4">
+                <select className={selectClass(profile.experience)} value={profile.experience} onChange={(e) => setProfile({...profile, experience: e.target.value})}><option value="" className={optionClass}>Level</option><option value="beginner" className={optionClass}>Beginner</option><option value="intermediate" className={optionClass}>Intermediate</option><option value="advanced" className={optionClass}>Pro</option></select>
+                <select className={selectClass(profile.goal)} value={profile.goal} onChange={(e) => setProfile({...profile, goal: e.target.value})}><option value="" className={optionClass}>Goal</option><option value="weight_loss" className={optionClass}>Weight Loss</option><option value="muscle_gain" className={optionClass}>Muscle Gain</option><option value="posture_correction" className={optionClass}>Posture Fix</option></select>
+             </div>
+
+             {/* 🔹 Diet & Country */}
+             <div className="flex gap-4">
+                <select className={selectClass(profile.dietPref)} value={profile.dietPref} onChange={(e) => setProfile({...profile, dietPref: e.target.value})}><option value="" className={optionClass}>Diet</option><option value="non-veg" className={optionClass}>Non-Veg</option><option value="veg" className={optionClass}>Veg</option><option value="vegan" className={optionClass}>Vegan</option></select>
+                <select className={selectClass(profile.location)} value={profile.location} onChange={(e) => setProfile({...profile, location: e.target.value})}><option value="" className={optionClass}>Country</option>{COUNTRIES.map(c => <option key={c} value={c} className={optionClass}>{c}</option>)}<option value="Other" className={optionClass}>Other</option></select>
+             </div>
+
+             <button onClick={handleFinishOnboarding} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl mt-2 transition-all shadow-lg shadow-green-900/20">Generate Plan 🚀</button>
           </div>
         </motion.div>
       </div>
@@ -254,7 +276,6 @@ function FitnessApp() {
         {activeTab === 'account' && (<div className="p-8 text-center"><UserButton showName /><button onClick={handleUpdateProfile} className="mt-8 bg-zinc-800 px-6 py-3 rounded-xl">Save Profile</button></div>)}
       </main>
       
-      {/* 👇 FIXED: Using UserIcon instead of User */}
       <nav className="md:hidden fixed bottom-0 w-full bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 flex justify-around z-50 pb-safe">{['workout','diet','progress','account'].map(t=><button key={t} onClick={()=>setActiveTab(t as any)} className={activeTab===t?'text-green-500':'text-zinc-600'}>{t==='workout'?<Dumbbell/>:t==='diet'?<Apple/>:<UserIcon/>}</button>)}</nav>
     </div>
   );
