@@ -98,7 +98,6 @@ function FitnessApp() {
   const { generatePlan, chatWithCoach, loading } = useGemini();
 
   useEffect(() => {
-    // 🧠 REBRANDED STORAGE KEYS: 'fitbuddy_'
     const savedPlans = localStorage.getItem('fitbuddy_plans');
     const savedProfile = localStorage.getItem('fitbuddy_profile');
     const savedProgress = localStorage.getItem('fitbuddy_progress');
@@ -110,11 +109,17 @@ function FitnessApp() {
     
     if (savedProfile) {
         setProfile(JSON.parse(savedProfile));
-        setStep('dashboard'); 
+        setStep('dashboard'); // 👈 SKIPS ONBOARDING IF DATA EXISTS
     } else if (user?.firstName) {
         setProfile(prev => ({ ...prev, name: user.firstName || '' }));
     }
   }, [user]);
+
+  // ✅ CRITICAL FIX: Save data when finishing onboarding
+  const handleFinishOnboarding = () => {
+      localStorage.setItem('fitbuddy_profile', JSON.stringify(profile)); // 💾 SAVES TO MEMORY
+      setStep('dashboard');
+  };
 
   const handleGenerate = async (type: 'workout' | 'diet', isTweak = false) => {
     if(!profile.gender || !profile.goal || !profile.activity) { alert("Please fill in all details!"); return; }
@@ -264,7 +269,9 @@ function FitnessApp() {
                     <option value="Other" className={optionClass}>Other</option>
                 </select>
             </div>
-             <button onClick={() => setStep('dashboard')} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl mt-2 transition-all shadow-lg shadow-green-900/20">Generate Plan 🚀</button>
+            
+             {/* 👇 THE FIX IS HERE: Calls handleFinishOnboarding */}
+             <button onClick={handleFinishOnboarding} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl mt-2 transition-all shadow-lg shadow-green-900/20">Generate Plan 🚀</button>
           </div>
         </motion.div>
       </div>
@@ -395,6 +402,7 @@ function FitnessApp() {
             </div>
         )}
 
+        {/* ... (Progress and Chat Tabs remain the same) ... */}
         {activeTab === 'progress' && (
            <div className="max-w-4xl mx-auto">
              <div className="grid md:grid-cols-3 gap-6 mb-8">
