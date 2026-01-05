@@ -4,8 +4,7 @@ import { useGemini } from '@/hooks/useGemini';
 import { Apple, Dumbbell, User, Send, Bot, Sparkles, Zap, Trash2, TrendingUp, Calendar, Plus, LogIn, Settings, Activity, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SignInButton, UserButton, useUser, SignedIn, SignedOut } from "@clerk/nextjs";
-// 📊 CHART IMPORTS
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const COUNTRIES = [
   "United States", "India", "United Kingdom", "Canada", "Australia",
@@ -25,7 +24,7 @@ interface UserProfile {
 
 interface ProgressEntry { date: string; weight: string; note: string; }
 
-export default function YFJWebsite() {
+export default function FitBuddyWebsite() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const { isSignedIn } = useUser();
 
@@ -46,7 +45,7 @@ const LandingPage = ({ onStart }: { onStart: () => void }) => {
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tighter cursor-pointer">
             <div className="bg-green-500 p-1.5 rounded text-black"><Bot size={20} /></div>
-            <span>YFJ<span className="text-green-500">.</span></span>
+            <span>FitBuddy<span className="text-green-500">.</span></span>
           </div>
           <div className="flex gap-4 items-center">
             <SignedIn>
@@ -99,10 +98,11 @@ function FitnessApp() {
   const { generatePlan, chatWithCoach, loading } = useGemini();
 
   useEffect(() => {
-    const savedPlans = localStorage.getItem('yfj_plans');
-    const savedProfile = localStorage.getItem('yfj_profile');
-    const savedProgress = localStorage.getItem('yfj_progress');
-    const savedChat = localStorage.getItem('yfj_chat_history');
+    // 🧠 REBRANDED STORAGE KEYS: 'fitbuddy_'
+    const savedPlans = localStorage.getItem('fitbuddy_plans');
+    const savedProfile = localStorage.getItem('fitbuddy_profile');
+    const savedProgress = localStorage.getItem('fitbuddy_progress');
+    const savedChat = localStorage.getItem('fitbuddy_chat_history');
     
     if (savedPlans) setPlans(JSON.parse(savedPlans));
     if (savedProgress) setProgress(JSON.parse(savedProgress));
@@ -125,13 +125,13 @@ function FitnessApp() {
     
     const newPlans = { ...plans, [type]: result };
     setPlans(newPlans);
-    localStorage.setItem('yfj_plans', JSON.stringify(newPlans));
-    localStorage.setItem('yfj_profile', JSON.stringify(profile));
+    localStorage.setItem('fitbuddy_plans', JSON.stringify(newPlans));
+    localStorage.setItem('fitbuddy_profile', JSON.stringify(profile));
     if(isTweak) setTweak(''); 
   };
 
   const handleUpdateProfile = () => {
-    localStorage.setItem('yfj_profile', JSON.stringify(profile));
+    localStorage.setItem('fitbuddy_profile', JSON.stringify(profile));
     alert("Profile Updated Successfully! 🟢");
   };
 
@@ -140,7 +140,7 @@ function FitnessApp() {
     const entry: ProgressEntry = { date: new Date().toLocaleDateString(), weight: newLog.weight, note: newLog.note };
     const updatedProgress = [entry, ...progress]; 
     setProgress(updatedProgress);
-    localStorage.setItem('yfj_progress', JSON.stringify(updatedProgress));
+    localStorage.setItem('fitbuddy_progress', JSON.stringify(updatedProgress));
     setNewLog({ weight: '', note: '' });
   };
 
@@ -158,7 +158,7 @@ function FitnessApp() {
   const handleClearChat = () => {
       if(confirm("Clear just the chat history?")) {
           setChatHistory([]);
-          localStorage.removeItem('yfj_chat_history');
+          localStorage.removeItem('fitbuddy_chat_history');
       }
   }
 
@@ -167,14 +167,14 @@ function FitnessApp() {
     const userMsg = { role: 'user', text: chatInput };
     const updatedHistory = [...chatHistory, userMsg];
     setChatHistory(updatedHistory);
-    localStorage.setItem('yfj_chat_history', JSON.stringify(updatedHistory));
+    localStorage.setItem('fitbuddy_chat_history', JSON.stringify(updatedHistory));
     setChatInput('');
 
     const response = await chatWithCoach(userMsg.text, JSON.stringify(updatedHistory));
     
     const finalHistory = [...updatedHistory, { role: 'assistant', text: response }];
     setChatHistory(finalHistory);
-    localStorage.setItem('yfj_chat_history', JSON.stringify(finalHistory));
+    localStorage.setItem('fitbuddy_chat_history', JSON.stringify(finalHistory));
   };
 
   const calculateBMI = () => {
@@ -184,11 +184,9 @@ function FitnessApp() {
       return (w / (h * h)).toFixed(1);
   };
 
-  // 📊 HELPER: Prepare Data for Graph (Needs to be Oldest -> Newest)
   const getGraphData = () => {
-      // Create a copy and reverse it so it goes Jan 1 -> Jan 2 -> Jan 3
       return [...progress].reverse().map(p => ({
-          date: p.date.split('/')[0] + '/' + p.date.split('/')[1], // Shorten date to "MM/DD"
+          date: p.date.split('/')[0] + '/' + p.date.split('/')[1],
           weight: Number(p.weight)
       }));
   };
@@ -202,7 +200,7 @@ function FitnessApp() {
         <div className="absolute inset-0 bg-grid pointer-events-none" />
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-card w-full max-w-md p-8 rounded-3xl relative z-10">
           <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Setup Profile</h2>
+              <h2 className="text-2xl font-bold">FitBuddy Profile</h2>
               <SignedIn><UserButton /></SignedIn>
           </div>
           <p className="text-zinc-400 text-sm mb-6">{user?.firstName ? `Welcome back, ${user.firstName}!` : "Let's calculate your metabolism."}</p>
@@ -276,7 +274,7 @@ function FitnessApp() {
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans">
       <aside className="hidden md:flex w-72 bg-black/40 backdrop-blur-xl border-r border-white/5 p-6 flex-col gap-6 fixed h-full z-20">
-        <div className="flex items-center gap-2 mb-6"><h2 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Bot className="text-green-500" /> YFJ App</h2></div>
+        <div className="flex items-center gap-2 mb-6"><h2 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Bot className="text-green-500" /> FitBuddy</h2></div>
         
         <div className="bg-zinc-900/80 p-4 rounded-xl mb-6 border border-zinc-800 flex items-center gap-3">
              <UserButton /> 
@@ -397,7 +395,6 @@ function FitnessApp() {
             </div>
         )}
 
-        {/* ✅ PROGRESS TAB WITH CHART */}
         {activeTab === 'progress' && (
            <div className="max-w-4xl mx-auto">
              <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -415,7 +412,6 @@ function FitnessApp() {
                 </div>
              </div>
 
-             {/* 📈 VISUAL CHART AREA */}
              <div className="p-6 rounded-3xl bg-zinc-900/50 border border-zinc-800 mb-8 h-[300px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Activity size={18} className="text-green-500"/> Weight Trend</h3>
                 {progress.length > 1 ? (
@@ -429,18 +425,11 @@ function FitnessApp() {
                         </defs>
                         <XAxis dataKey="date" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis hide domain={['auto', 'auto']} />
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px' }}
-                            itemStyle={{ color: '#22c55e' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px' }} itemStyle={{ color: '#22c55e' }}/>
                         <Area type="monotone" dataKey="weight" stroke="#22c55e" fillOpacity={1} fill="url(#colorWeight)" strokeWidth={3} />
                       </AreaChart>
                    </ResponsiveContainer>
-                ) : (
-                    <div className="h-full flex items-center justify-center text-zinc-500 text-sm">
-                        Log at least 2 entries to see the graph!
-                    </div>
-                )}
+                ) : (<div className="h-full flex items-center justify-center text-zinc-500 text-sm">Log at least 2 entries to see the graph!</div>)}
              </div>
 
              <div className="glass-card p-6 rounded-3xl mb-8 flex gap-4 items-end">
@@ -473,13 +462,13 @@ function FitnessApp() {
         {activeTab === 'chat' && (
            <div className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] max-w-4xl mx-auto">
               <div className="flex justify-between items-center mb-2 px-2">
-                 <h3 className="text-sm text-zinc-500 font-bold">AI Coach Chat</h3>
+                 <h3 className="text-sm text-zinc-500 font-bold">FitBuddy AI Coach</h3>
                  {chatHistory.length > 0 && <button onClick={handleClearChat} className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1"><Trash2 size={12}/> Clear History</button>}
               </div>
               <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 glass-card rounded-3xl">
-                 {chatHistory.length === 0 && <div className="text-center text-zinc-600 mt-20"><Bot size={40} className="mx-auto mb-4 opacity-50"/><p>I am your AI Coach. Ask me anything!</p></div>}
+                 {chatHistory.length === 0 && <div className="text-center text-zinc-600 mt-20"><Bot size={40} className="mx-auto mb-4 opacity-50"/><p>I am FitBuddy. Ask me anything!</p></div>}
                  {chatHistory.map((msg, i) => (<div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`px-5 py-3 rounded-2xl max-w-[85%] ${msg.role === 'user' ? 'bg-green-600 text-white' : 'bg-zinc-800 text-zinc-200'}`}>{msg.text}</div></div>))}
-                 {loading && <div className="text-zinc-500 text-sm animate-pulse ml-4">AI is typing...</div>}
+                 {loading && <div className="text-zinc-500 text-sm animate-pulse ml-4">FitBuddy is typing...</div>}
               </div>
               <div className="flex gap-2">
                  <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleChat()} className="flex-1 bg-zinc-900 p-4 rounded-xl border border-zinc-800 text-white focus:border-green-500 outline-none" placeholder="Ask question..." />

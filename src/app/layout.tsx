@@ -6,8 +6,8 @@ import { ClerkProvider } from '@clerk/nextjs'
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "YFJ Fitness",
-  description: "AI Personal Trainer",
+  title: "FitBuddy | AI Personal Trainer", // 👈 Name Updated here
+  description: "Your Body. AI Engineered.",
 };
 
 export default function RootLayout({
