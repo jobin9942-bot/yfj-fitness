@@ -12,6 +12,7 @@
     "@clerk/nextjs": "^6.36.5",
     "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-slot": "^1.2.4",
+    "@upstash/redis": "^1.36.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",
