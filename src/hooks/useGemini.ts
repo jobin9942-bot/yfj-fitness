@@ -102,7 +102,10 @@ export const useGemini = () => {
       return text;
     } catch (error) {
       setLoading(false);
-      return `<div class="text-red-500">Error generating plan. Try again.</div>`;
+      return `<div class="p-4 bg-red-500/10 border border-red-500 rounded-xl text-red-500 text-center">
+        <b>⚠️ AI Limit Reached or Error</b><br/>
+        Please check your API Key quota or try again later.
+      </div>`;
     }
   };
 
@@ -110,21 +113,48 @@ export const useGemini = () => {
     setLoading(true);
     try {
       const modelName = await getAvailableModel();
+      
+      // 👇 UPDATED PROMPT FOR "FITNESS EXPERT" PERSONA
+      const prompt = `
+        ROLE: You are FitBuddy, a world-class Fitness Expert and Personal Trainer. 
+        TONE: Professional, Motivating, Clear, and slightly witty.
+        
+        STRICT RULES:
+        1. NO MARKDOWN. NO ASTERISKS (*). NO BOLDING. Plain text only.
+        2. Keep answers concise and easy to read.
+        3. IF THE USER ASKS ABOUT NON-FITNESS TOPICS (e.g., "Write python code", "Who is the president?", "Tell me a joke"):
+           - You MUST humorously reject it and pivot back to fitness.
+           - Example 1: "I don't know Python, but I know how to construct a killer Cobra stretch. Let's do that instead."
+           - Example 2: "I don't follow politics, I only follow split squats. Drop and give me 10."
+           - Example 3: "I'm not a chef for desserts, but I can cook up a mean leg day plan."
+
+        CONTEXT:
+        User History: ${history}
+        Current Question: ${message}
+      `;
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: `Coach, reply briefly: ${message}. History: ${history}` }] }] }),
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
         }
       );
       const data = await response.json();
       setLoading(false);
-      return data.candidates[0].content.parts[0].text;
-    } catch (e) { setLoading(false); return "Connection error."; }
+      
+      // Clean up any accidental markdown just in case
+      let cleanText = data.candidates[0].content.parts[0].text;
+      cleanText = cleanText.replace(/\*/g, '').replace(/#/g, ''); 
+      
+      return cleanText;
+    } catch (e) { 
+        setLoading(false); 
+        return "I'm out of breath (API Error). Ask me again in a minute!"; 
+    }
   }
 
-  // 🍎 NEW: ESTIMATE CALORIES
   const estimateCalories = async (food: string) => {
     setLoading(true);
     try {
@@ -143,7 +173,7 @@ export const useGemini = () => {
         );
         const data = await response.json();
         const text = data.candidates[0].content.parts[0].text;
-        const calories = text.replace(/[^0-9]/g, ''); // Extract only numbers
+        const calories = text.replace(/[^0-9]/g, ''); 
         setLoading(false);
         return calories || "0";
     } catch (error) {
