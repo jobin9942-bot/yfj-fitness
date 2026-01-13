@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useGemini } from '@/hooks/useGemini';
 import { saveToCloud, loadFromCloud } from './actions';
-import { Apple, Dumbbell, User as UserIcon, Send, Bot, Trash2, TrendingUp, Plus, LogIn, Settings, Activity, MessageSquare, Utensils, Share2, Camera, Calendar as CalendarIcon, CheckCircle } from 'lucide-react';
+// 👇 ADDED 'Zap' to the imports here
+import { Apple, Dumbbell, User as UserIcon, Send, Bot, Sparkles, Zap, Trash2, TrendingUp, Calendar, Plus, LogIn, Settings, Activity, MessageSquare, Cloud, Utensils, Share2, Camera, Calendar as CalendarIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SignInButton, UserButton, useUser, SignedIn, SignedOut } from "@clerk/nextjs";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -17,7 +18,7 @@ interface UserProfile {
 
 interface ProgressEntry { date: string; weight: string; note: string; }
 interface DietLog { id: number; food: string; calories: string; date: string; }
-interface PhotoLog { id: number; date: string; url: string; note: string; } // 📸 NEW
+interface PhotoLog { id: number; date: string; url: string; note: string; }
 
 export default function FitBuddyWebsite() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
@@ -66,15 +67,15 @@ function FitnessApp() {
   const [progress, setProgress] = useState<ProgressEntry[]>([]);
   const [chatHistory, setChatHistory] = useState<{role: string, text: string}[]>([]);
   const [dietLogs, setDietLogs] = useState<DietLog[]>([]);
-  const [streak, setStreak] = useState<string[]>([]); // 🔥 NEW: Streak Dates
-  const [photos, setPhotos] = useState<PhotoLog[]>([]); // 📸 NEW: Photo Gallery
+  const [streak, setStreak] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<PhotoLog[]>([]);
 
   // INPUTS
   const [chatInput, setChatInput] = useState('');
   const [tweak, setTweak] = useState('');
   const [newLog, setNewLog] = useState({ weight: '', note: '' });
   const [newDiet, setNewDiet] = useState({ food: '', calories: '' });
-  const [newPhoto, setNewPhoto] = useState(''); // 📸 Input for photo URL
+  const [newPhoto, setNewPhoto] = useState('');
 
   // ☁️ LOAD DATA & UPDATE STREAK
   useEffect(() => {
@@ -83,7 +84,6 @@ function FitnessApp() {
         setIsSyncing(true);
         const cloudData: any = await loadFromCloud(user.id);
         
-        // 1. Load Everything
         if (cloudData) {
             if (cloudData.profile) { setProfile(cloudData.profile); setStep('dashboard'); }
             if (cloudData.plans) setPlans(cloudData.plans);
@@ -94,13 +94,12 @@ function FitnessApp() {
             if (cloudData.streak) setStreak(cloudData.streak);
         }
 
-        // 2. 🔥 Update Streak (If first time login today)
+        // 🔥 Update Streak
         const today = new Date().toLocaleDateString();
         const currentStreak = cloudData?.streak || [];
         if (!currentStreak.includes(today)) {
              const newStreak = [...currentStreak, today];
              setStreak(newStreak);
-             // Save immediately to cloud without overwriting other loading states
              await saveToCloud(user.id, { ...cloudData, streak: newStreak });
         }
         
@@ -118,11 +117,10 @@ function FitnessApp() {
           progress: newData.progress || progress,
           chatHistory: newData.chatHistory || chatHistory,
           dietLogs: newData.dietLogs || dietLogs,
-          streak: newData.streak || streak, // 🔥
-          photos: newData.photos || photos  // 📸
+          streak: newData.streak || streak,
+          photos: newData.photos || photos
       };
       
-      // Update Local State
       if(newData.profile) setProfile(newData.profile);
       if(newData.plans) setPlans(newData.plans);
       if(newData.progress) setProgress(newData.progress);
@@ -164,7 +162,6 @@ function FitnessApp() {
       await syncToCloud({ dietLogs: updated });
   }
 
-  // 📸 SAVE PHOTO LINK
   const handleAddPhoto = async () => {
       if(!newPhoto) return;
       const entry: PhotoLog = { id: Date.now(), date: new Date().toLocaleDateString(), url: newPhoto, note: "Progress Pic" };
@@ -175,15 +172,11 @@ function FitnessApp() {
       if(confirm("Delete photo?")) await syncToCloud({ photos: photos.filter(p => p.id !== id) });
   };
 
-  // 📲 SHARE FUNCTION (WhatsApp)
   const handleSharePlan = (type: 'workout' | 'diet') => {
       const planText = plans[type];
       if(!planText) { alert("Generate a plan first!"); return; }
-      
-      // Convert HTML to simple text
       const cleanText = planText.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n').trim();
       const shareUrl = `https://wa.me/?text=${encodeURIComponent(`🔥 My FitBuddy ${type.toUpperCase()} Plan:\n\n${cleanText}\n\n🚀 Built with FitBuddy AI`)}`;
-      
       window.open(shareUrl, '_blank');
   };
 
@@ -210,7 +203,7 @@ function FitnessApp() {
   const optionClass = "bg-zinc-900 text-white";
 
   // --- UI ---
-  if (step === 'onboarding') return (<div className="min-h-screen flex items-center justify-center bg-[#050505] p-6 text-white"><p>Loading Profile...</p></div>); // Simplified re-render for brevity
+  if (step === 'onboarding') return (<div className="min-h-screen flex items-center justify-center bg-[#050505] p-6 text-white"><p>Loading Profile...</p></div>);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans">
@@ -229,7 +222,6 @@ function FitnessApp() {
       <main className="flex-1 p-4 md:p-10 md:ml-72 mb-20 md:mb-0">
         <header className="mb-8 flex justify-between items-center"><div><h1 className="text-3xl font-bold">Hello, <span className="text-green-400 capitalize">{user?.firstName || 'Hero'}</span></h1></div><div className="md:hidden"><UserButton /></div></header>
 
-        {/* 💪 WORKOUT TAB with SHARE BUTTON */}
         {activeTab === 'workout' && (
            <div className="glass-card p-6 md:p-8 rounded-3xl min-h-[50vh]">
               <div className="flex justify-between items-center mb-6">
@@ -243,7 +235,6 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* 🥗 DIET TAB */}
         {activeTab === 'diet' && (
            <div className="space-y-8">
               <div className="glass-card p-6 rounded-3xl border border-orange-500/20">
@@ -258,7 +249,6 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* 📈 PROGRESS + 📸 PHOTOS */}
         {activeTab === 'progress' && (
            <div className="max-w-4xl mx-auto space-y-8">
              <div className="p-6 rounded-3xl bg-zinc-900/50 border border-zinc-800 h-[300px]">
@@ -272,7 +262,6 @@ function FitnessApp() {
                 <button onClick={handleLogProgress} className="bg-green-600 h-[50px] px-6 rounded-xl text-white"><Plus/></button>
              </div>
 
-             {/* 📸 NEW: PHOTO GALLERY */}
              <div className="glass-card p-6 rounded-3xl">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Camera size={18} className="text-blue-500"/> Body Transformation</h3>
                 <div className="flex gap-2 mb-6">
@@ -295,30 +284,23 @@ function FitnessApp() {
            </div>
         )}
 
-        {/* ⚙️ ACCOUNT TAB with 🔥 STREAK CALENDAR */}
         {activeTab === 'account' && (
             <div className="max-w-4xl mx-auto space-y-6">
                 <div className="grid md:grid-cols-3 gap-6">
                     <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800"><h3 className="text-zinc-500 text-sm mb-1">Your BMI</h3><div className="text-4xl font-bold text-white">{calculateBMI()}</div><div className="text-xs text-green-400 mt-1">{Number(calculateBMI()) < 18.5 ? "Underweight" : Number(calculateBMI()) < 25 ? "Healthy" : "Overweight"}</div></div>
-                    
-                    {/* 🔥 CONSISTENCY STREAK */}
                     <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800 col-span-2">
                         <h3 className="text-zinc-500 text-sm mb-3 flex items-center gap-2"><CalendarIcon size={14}/> Login Streak (This Month)</h3>
                         <div className="flex flex-wrap gap-2">
                              {Array.from({length: 30}, (_, i) => {
-                                 const d = new Date(); 
-                                 d.setDate(d.getDate() - (29 - i));
+                                 const d = new Date(); d.setDate(d.getDate() - (29 - i));
                                  const dateStr = d.toLocaleDateString();
                                  const isActive = streak.includes(dateStr);
-                                 return (
-                                     <div key={i} title={dateStr} className={`w-3 h-3 rounded-sm ${isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-zinc-800'}`}></div>
-                                 )
+                                 return (<div key={i} title={dateStr} className={`w-3 h-3 rounded-sm ${isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-zinc-800'}`}></div>)
                              })}
                         </div>
                         <div className="text-xs text-zinc-500 mt-3 text-right">{streak.length} Active Days Total</div>
                     </div>
                 </div>
-
                 <div className="glass-card p-8 rounded-3xl">
                     <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Settings size={20}/> Edit Profile</h2>
                     <div className="space-y-4">
